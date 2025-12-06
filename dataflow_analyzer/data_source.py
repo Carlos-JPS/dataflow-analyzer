@@ -115,51 +115,53 @@ class XMLSource(DataSource):
         name = name or self.path.stem
         super().__init__(name)
 
-    def load(self, engine: str = "pandas", xpath_root: str = "MEDICION", time_col: str = "FECHA", **kwargs) -> 'XMLSource':
+    def load(self, engine: str = "pandas", xpath_root: str = "Row", time_col: str = "DataSrvTime", **kwargs) -> 'XMLSource':
         """
         Carga datos desde XML.
+        Soporta estructuras donde los datos están en atributos (<Row Attr="Val"/>) o en sub-tags.
         
         Args:
-            xpath_root: Nodo raíz de cada registro en el XML.
-            time_col: Nombre del tag que contiene la fecha/hora.
+            xpath_root: Tag nombre de los elementos fila (ej: 'Row').
+            time_col: Nombre del atributo/tag que contiene la fecha/hora.
         """
         self._engine = engine
         logger.info(f"Cargando XML: {self.path}")
         
-        # Usamos lxml para parsear
         try:
             tree = etree.parse(str(self.path))
             root = tree.getroot()
         except Exception as e:
             raise ValueError(f"Error parseando XML: {e}")
 
-        # Extraer datos en lista de diccionarios
-        # Asumimos una estructura plana simple por ahora: <ROOT><ITEM><COL1>val</COL1>...</ITEM></ROOT>
-        # El usuario podrá especificar el tag del item si no es directo hijos del root
-        
         data = []
-        # Si el usuario da un xpath específico lo usamos, sino iteramos sobre hijos directos
-        elements = root.findall(f".//{xpath_root}") if xpath_root else root
+        # Buscar elementos usando xpath relativo
+        elements = root.findall(f".//{xpath_root}") if xpath_root else list(root)
         
         if not elements:
-            logger.warning(f"No se encontraron elementos con xpath '{xpath_root}'. Intentando iterar hijos directos.")
+            logger.warning(f"No se encontraron elementos con tag '{xpath_root}'. Intentando iterar hijos directos.")
             elements = list(root)
 
         for elem in elements:
-            row = {}
-            for child in elem:
-                 # TODO: Manejar atributos si es necesario, por ahora solo texto
-                 row[child.tag] = child.text
+            # Primero intentar obtener atributos
+            row = dict(elem.attrib)
+            
+            # Si no hay atributos, buscar en hijos directos (estructura anidada)
+            if not row:
+                for child in elem:
+                    if child.text:
+                        row[child.tag] = child.text
+            
             data.append(row)
 
         if not data:
-            logger.warning("El archivo XML parece no contener datos legibles bajo la estructura esperada.")
+            logger.warning("El archivo XML no generó filas. Verifique el xpath_root.")
         
         if engine == "pandas":
             df = pd.DataFrame(data)
             
-            # Auto-detectar columnas numéricas
+            # Auto-detectar columnas numéricas (optimizado)
             for col in df.columns:
+                # Intentar convertir a numero, ignorando errores para columnas de texto
                 df[col] = pd.to_numeric(df[col], errors='ignore')
             
             # Procesar Tiempo
@@ -168,7 +170,9 @@ class XMLSource(DataSource):
                 df = df.dropna(subset=[time_col])
                 df.set_index(time_col, inplace=True)
                 df.index.name = "time"
-            
+            else:
+                logger.warning(f"Columna de tiempo '{time_col}' no encontrada en el XML. Columnas: {df.columns.tolist()}")
+
             self._df = df
             
         return self
