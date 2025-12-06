@@ -1,0 +1,119 @@
+# =====================================
+# Python
+# =====================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.manifest
+*.spec
+
+# Build / Packaging
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+sdist/
+wheels/
+share/python-wheels/
+*.egg-info/
+*.egg
+.installed.cfg
+MANIFEST
+
+# Virtual Env
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Pip, Poetry, Pipenv
+pip-log.txt
+pip-delete-this-directory.txt
+.poetry/
+Pipfile.lock
+poetry.lock
+
+# =====================================
+# Testing / Coverage
+# =====================================
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+*.pytest_cache
+junit.xml
+
+# Mypy / Pylint / Pyright
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pylint.d/
+pyrightconfig.json
+
+# =====================================
+# OS Files
+# =====================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+*.DS_Store
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+*.swp
+*.swo
+
+# =====================================
+# IDE / Editors
+# =====================================
+
+# VSCode
+.vscode/
+
+# JetBrains / PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.vim
+*.vimrc
+
+# =====================================
+# Other
+# =====================================
+logs/
+*.log
+*.tmp
+*.temp
+.cache/
+.lockfile
+*.bak
