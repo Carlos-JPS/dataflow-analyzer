@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import logging
+from typing import Any, Optional
 
 try:
     from scipy.interpolate import make_interp_spline
@@ -16,6 +17,59 @@ class DataProcessor:
     Sigue el Principio de Responsabilidad Única (SRP), separando
     el 'cálculo' de la 'visualización'.
     """
+
+    @staticmethod
+    def filter_by_time(
+        df: pd.DataFrame, 
+        start: Any, 
+        end: Any, 
+        time_col: Optional[str] = None
+    ) -> pd.DataFrame:
+        """
+        Filtra un DataFrame por rango de tiempo.
+        Maneja strings, datetimes y zonas horarias (naive vs aware).
+        """
+        if df.empty:
+            return df
+            
+        # Determinar series de tiempo
+        if time_col:
+            if time_col not in df.columns:
+                logger.warning(f"Columna de tiempo '{time_col}' no encontrada.")
+                return df
+            times = pd.to_datetime(df[time_col])
+        else:
+            times = pd.to_datetime(df.index)
+            
+        # Normalizar start/end a timestamps pd.Timestamp
+        try:
+            ts_start = pd.to_datetime(start)
+            ts_end = pd.to_datetime(end)
+        except Exception as e:
+            logger.error(f"Error convirtiendo fechas start/end: {e}")
+            return df
+
+        # Manejo de Timezones
+        data_tz = getattr(times.dtype, 'tz', None)
+        start_tz = getattr(ts_start, 'tz', None)
+        end_tz = getattr(ts_end, 'tz', None)
+        
+        # Lógica de alineación de TZ
+        # Si datos tienen TZ y filtro no -> Localizamos el filtro a la TZ de los datos
+        if data_tz and not start_tz:
+             ts_start = ts_start.tz_localize(data_tz)
+        # Si datos no tienen TZ y filtro sí -> Convertimos filtro a UTC y removemos TZ (o convertimos a naive directamente)
+        elif not data_tz and start_tz:
+             ts_start = ts_start.tz_convert(None)
+             
+        if data_tz and not end_tz:
+            ts_end = ts_end.tz_localize(data_tz)
+        elif not data_tz and end_tz:
+             ts_end = ts_end.tz_convert(None)
+
+        # Crear máscara
+        mask = (times >= ts_start) & (times <= ts_end)
+        return df[mask].copy()
 
     @staticmethod
     def bin_data(
@@ -73,14 +127,12 @@ class DataProcessor:
             # Generar nuevo eje denso
             x_smooth = np.linspace(x_clean.min(), x_clean.max(), points)
             
-            # Crear Spline (requiere datos ordenados en X, pero make_interp_spline maneja X no ordenado si check_finite=True?)
-            # Scipy requiere X estrictamente creciente para BSpline, pero make_interp_spline permite repetidos si k es bajo?
-            # Mejor ordenar para asegurar consistencia
+            # Crear Spline, ordenando primero por X
             idx_sorted = np.argsort(x_clean)
             x_sorted = x_clean[idx_sorted]
             y_sorted = y_clean[idx_sorted]
             
-            # Eliminar duplicados en X (spline requiere X únicos o manejo especial)
+            # Eliminar duplicados en X
             x_unique, idx_unique = np.unique(x_sorted, return_index=True)
             y_unique = y_sorted[idx_unique]
             

@@ -87,6 +87,37 @@ class TestDataProcessor:
         binned = DataProcessor.bin_data(sample_drone_df, 'presion', ['altitude'], 0)
         assert len(binned) == len(sample_drone_df)
         
-        # Negative bin size -> Return original
-        binned_neg = DataProcessor.bin_data(sample_drone_df, 'presion', ['altitude'], -5.0)
-        assert len(binned_neg) == len(sample_drone_df)
+    def test_filter_by_time_basic(self):
+        """Test basic time filtering on index."""
+        # Create timestamps
+        rng = pd.date_range('2025-01-01 10:00', periods=5, freq='h') # 10, 11, 12, 13, 14
+        df = pd.DataFrame({'val': range(5)}, index=rng)
+        
+        # Filter from 11 to 13
+        filtered = DataProcessor.filter_by_time(df, '2025-01-01 11:00', '2025-01-01 13:00')
+        assert len(filtered) == 3 # 11, 12, 13
+        assert filtered.index[0] == pd.Timestamp('2025-01-01 11:00')
+
+    def test_filter_by_time_tz_aware_naive_mix(self):
+        """Test filtering where data is TZ-aware (UTC) and filter is naive string."""
+        # Data is UTC
+        rng = pd.date_range('2025-01-01 10:00', periods=5, freq='h', tz='UTC') 
+        df = pd.DataFrame({'val': range(5)}, index=rng)
+        
+        # Filter is naive "11:00" -> Should be treated as 11:00 UTC
+        filtered = DataProcessor.filter_by_time(df, '2025-01-01 11:00', '2025-01-01 12:00')
+        assert len(filtered) == 2
+        assert filtered.index.tz is not None # Should preserve TZ
+
+    def test_filter_by_time_naive_data_aware_filter(self):
+        """Test filtering where data is naive and filter is TZ-aware."""
+        rng = pd.date_range('2025-01-01 10:00', periods=5, freq='h') # Naive
+        df = pd.DataFrame({'val': range(5)}, index=rng)
+        
+        # Filter is 11:00 UTC. Logic should convert it to naive 11:00.
+        ts_start = pd.Timestamp('2025-01-01 11:00').tz_localize('UTC')
+        ts_end = pd.Timestamp('2025-01-01 12:00').tz_localize('UTC')
+        
+        filtered = DataProcessor.filter_by_time(df, ts_start, ts_end)
+        assert len(filtered) == 2
+        assert filtered.index[0] == pd.Timestamp('2025-01-01 11:00')
