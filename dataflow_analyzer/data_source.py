@@ -90,6 +90,9 @@ class CSVSource(DataSource):
             
             # 4. Formato Largo -> Ancho (Pivoting)
             if pivot and field_col in df.columns and value_col in df.columns:
+                # Asegurar que la columna de valores sea numérica para agregación
+                df[value_col] = pd.to_numeric(df[value_col], errors='coerce')
+                
                 logger.info(f"Pivoteando datos usando '{field_col}'...")
                 if df.index.duplicated().any():
                     logger.info(f"Timestamps duplicados detectados. Agregando con: {aggregation}")
