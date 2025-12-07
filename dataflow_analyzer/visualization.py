@@ -391,3 +391,67 @@ class DataVisualizer:
             logger.info(f"Gráfico guardado en: {save_path}")
             
         return fig
+
+    def plot_wind_profile(
+        self,
+        df: pd.DataFrame,
+        alt_col: str,
+        speed_col: str,
+        dir_col: str,
+        title: str = "Perfil de Viento",
+        xlabel: str = "Velocidad de Viento (m/s)",
+        ylabel: str = "Altitud (m)",
+        save_path: Optional[str] = None,
+        BarbInterval: int = 30 # Plot barb every N meters roughly
+    ):
+        """
+        Genera un perfil vertical de viento con barbas.
+        Muestra la velocidad como línea y la dirección como barbas.
+        """
+        fig, ax = plt.subplots(figsize=(6, 10)) # Vertical layout
+        
+        # 1. Clean Data
+        sub = df[[alt_col, speed_col, dir_col]].dropna().sort_values(by=alt_col)
+        
+        # 2. Bin data FIRST for clear barbs AND a clean profile line
+        bins = np.arange(sub[alt_col].min(), sub[alt_col].max(), BarbInterval)
+        # Handle cases where bins might be empty or single point
+        if len(bins) < 2:
+            bins = 5 # Default to 5 bins if range is small
+            
+        sub['bin'] = pd.cut(sub[alt_col], bins=bins)
+        binned = sub.groupby('bin', observed=True).mean().dropna()
+        
+        # 3. Main Line (Speed) - USING BINNED DATA
+        ax.plot(binned[speed_col], binned[alt_col], label="Velocidad (Promedio)", color="tab:blue", alpha=0.8, marker='o', markersize=4)
+        
+        # 4. Calculate U/V (Meteorological Convention: Direction FROM)
+        rads = np.deg2rad(binned[dir_col].values)
+        vals_speed = binned[speed_col].values
+        
+        # Met convention to U/V
+        u = -vals_speed * np.sin(rads)
+        v = -vals_speed * np.cos(rads)
+        
+        y_locs = binned[alt_col].values # Altitude positions
+        # Place barbs slightly to the right of the max speed or fixed position?
+        # Fixed position prevents overlapping data lines.
+        x_max = sub[speed_col].max()
+        x_locs = np.ones_like(y_locs) * (x_max * 1.1 if x_max > 0 else 1) 
+        
+        # Plot Barbs
+        ax.barbs(x_locs, y_locs, u, v, length=6, pivot='middle', color='black')
+        
+        ax.set_title(title, fontsize=14)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.grid(True, linestyle="--", alpha=0.5)
+        
+        # Adjust X limit to fit barbs
+        ax.set_xlim(0, (x_max * 1.3) if x_max > 0 else 10)
+        
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            logger.info(f"Gráfico de viento guardado en: {save_path}")
+            
+        return fig

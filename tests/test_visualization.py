@@ -43,3 +43,20 @@ class TestDataVisualizer:
         )
         assert isinstance(fig, plt.Figure)
         plt.close(fig)
+
+    def test_plot_wind_profile_smoke(self, sample_drone_df):
+        """Smoke test for plot_wind_profile."""
+        viz = DataVisualizer()
+        # Ensure columns exist in sample (add dummy if needed)
+        df = sample_drone_df.copy()
+        df['speed'] = 5.0
+        df['direction'] = 180.0
+        
+        fig = viz.plot_wind_profile(
+            df=df,
+            alt_col='altitude',
+            speed_col='speed',
+            dir_col='direction'
+        )
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
