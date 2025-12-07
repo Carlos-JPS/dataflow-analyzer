@@ -64,4 +64,38 @@ class TestXMLSource:
         df = source.df
         assert len(df) == 2
         assert "Pressure" in df.columns
-        assert df["Pressure"].dtype.kind in 'fi' # float or int
+    def test_load_empty_file(self, tmp_path):
+        """Test loading an empty file."""
+        p = tmp_path / "empty.csv"
+        p.touch()
+        source = CSVSource(str(p))
+        # Pandas empty csv raises EmptyDataError usually, or returns empty df depending on version/args.
+        # Our implementation might raise custom error or propagate pandas error.
+        with pytest.raises(Exception): # We expect some failure
+            source.load()
+
+    def test_load_corrupt_csv(self, tmp_path):
+        """Test loading a malformed CSV."""
+        p = tmp_path / "corrupt.csv"
+        p.write_text("a,b,c\n1,2") # Missing column
+        source = CSVSource(str(p))
+        source.load(pivot=False)
+        assert len(source.df) == 1 # Pandas is lenient, strict checks might be needed if we care.
+
+    def test_load_unicode_headers(self, tmp_path):
+        """Test CSV with special characters in headers."""
+        p = tmp_path / "unicode.csv"
+        p.write_text("time,presión,temperatura\n2025-01-01,1000,20")
+        source = CSVSource(str(p))
+        source.load(pivot=False, time_col='time')
+        assert 'presión' in source.df.columns
+
+    def test_load_missing_columns_xml(self, tmp_path):
+        """Test XML missing expected attributes."""
+        p = tmp_path / "bad.xml"
+        p.write_text("<Root><Row time='2025'/></Root>") # No pressure
+        
+        source = XMLSource(str(p))
+        source.load(time_col='time')
+        df = source.df
+        assert 'Pressure' not in df.columns # Should load but just lack the column

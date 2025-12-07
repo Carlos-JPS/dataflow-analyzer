@@ -64,3 +64,29 @@ class TestDataProcessor:
         
         x_new, y_new = DataProcessor.smooth_curve(x, y, k=3)
         assert len(x_new) == 500 # Should succeed and generate dense output
+
+    def test_smooth_curve_all_nans(self):
+        """Test smoothing when all data is NaN."""
+        x = np.array([np.nan, np.nan])
+        y = np.array([1, 2])
+        x_new, y_new = DataProcessor.smooth_curve(x, y)
+        # Should return emtpy or original (filtered) which is empty
+        assert len(x_new) == 0
+        
+    def test_smooth_curve_single_point(self):
+        """Test smoothing with a single valid point."""
+        x = np.array([1.0])
+        y = np.array([10.0])
+        x_new, y_new = DataProcessor.smooth_curve(x, y)
+        assert len(x_new) == 1
+        assert x_new[0] == 1.0
+
+    def test_bin_data_invalid_size(self, sample_drone_df):
+        """Test binning with zero or negative bin size."""
+        # Zero bin size -> Return original
+        binned = DataProcessor.bin_data(sample_drone_df, 'presion', ['altitude'], 0)
+        assert len(binned) == len(sample_drone_df)
+        
+        # Negative bin size -> Return original
+        binned_neg = DataProcessor.bin_data(sample_drone_df, 'presion', ['altitude'], -5.0)
+        assert len(binned_neg) == len(sample_drone_df)
