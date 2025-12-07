@@ -31,7 +31,9 @@ class DataVisualizer:
         marker: str = '.',
         linestyle: str = '-',
         alpha: float = 0.6,
-        colors: Optional[List[str]] = None
+        colors: Optional[List[str]] = None,
+        invert_yaxis_left: bool = False,
+        invert_yaxis_right: bool = False
     ):
         """
         Genera un gráfico de perfil vertical.
@@ -86,8 +88,7 @@ class DataVisualizer:
         ax1.legend(loc="upper left")
         ax1.grid(True, linestyle="--", alpha=alpha)
         
-        # Si es Presión, invertir eje Y (mayor presión = menor altura)
-        if "presion" in y_left_col.lower() or "pressure" in y_left_col.lower():
+        if invert_yaxis_left:
             ax1.invert_yaxis()
             
         # --- Plot Eje Derecho (Twinx) ---
@@ -112,8 +113,7 @@ class DataVisualizer:
             ax2.set_ylabel(yright_label, fontsize=12, color=color_y2)
             ax2.tick_params(axis='y', labelcolor=color_y2)
             
-            # Invertir también si es presión
-            if "presion" in y_right_col.lower() or "pressure" in y_right_col.lower():
+            if invert_yaxis_right:
                 ax2.invert_yaxis()
                 
             # Mover la leyenda del eje derecho para que no tape
@@ -256,42 +256,74 @@ class DataVisualizer:
         title: str = "Comparación de Perfiles",
         save_path: Optional[str] = None,
         bin_size: Optional[float] = None,
-        smooth: bool = False
+        smooth: bool = False,
+        xlabel: Optional[str] = None,
+        y1_label: Optional[str] = None,
+        y2_label: Optional[str] = None,
+        style1: Optional[Dict[str, Any]] = None,
+        style2: Optional[Dict[str, Any]] = None,
+        color_y1: str = 'tab:blue',
+        color_y2: str = 'tab:red',
+        invert_x: bool = False,
+        invert_y1: bool = False,
+        invert_y2: bool = False
     ):
         """
         Compara dos perfiles (ej: Dron vs Sonda) en el mismo gráfico.
-        df1 se grafica con línea sólida.
-        df2 se grafica con línea punteada.
         """
         fig, ax1 = plt.subplots(figsize=self.figsize)
         
+        # Styles defaults
+        s1 = style1 or {'color': color_y1, 'linestyle': '-'} # Use color_y1 if not in style? No, style overrides? 
+        # Actually s1/s2 are for DF1/DF2 datasets. 
+        # But we align colors by VARIABLE (Y1 vs Y2).
+        # So we should use color_y1 for Y1 plots (both dashed and solid)
+        # And color_y2 for Y2 plots.
+        
+        s1 = style1 or {}
+        s2 = style2 or {'linestyle': '--', 'alpha': 0.7}
+        
+        # Logic: Plot Y1 with color_y1, varying linestyle by dataset.
+        
         # Procesar ambos DataFrames
+
         data_1 = self._process_data(df1, x_col, y1_col, y2_col, bin_size, smooth)
         data_2 = self._process_data(df2, x_col, y1_col, y2_col, bin_size, smooth)
         
-        # --- Eje Y1 (Izquierdo): Altitud ---
-        color_alt = 'tab:blue'
-        ax1.set_xlabel(f'{x_col.replace("_", " ").title()} (hPa)', fontsize=12)
-        ax1.set_ylabel(f'{y1_col.replace("_", " ").title()} (m)', fontsize=12, color=color_alt)
-        ax1.tick_params(axis='y', labelcolor=color_alt)
+        # Labels
+        lbl_x = xlabel if xlabel else x_col.replace("_", " ").title()
+        lbl_y1 = y1_label if y1_label else y1_col.replace("_", " ").title()
+        lbl_y2 = y2_label if y2_label else y2_col.replace("_", " ").title()
+
+        # --- Eje Y1 (Izquierdo) ---
+        ax1.set_xlabel(lbl_x, fontsize=12)
+        ax1.set_ylabel(lbl_y1, fontsize=12, color=color_y1)
+        ax1.tick_params(axis='y', labelcolor=color_y1)
         
-        # Plot DF1 (Sólido)
-        ax1.plot(data_1['x'], data_1['y1'], color=color_alt, linestyle='-', label=f'{label1} ({y1_col})')
-        # Plot DF2 (Punteado)
-        ax1.plot(data_2['x'], data_2['y1'], color=color_alt, linestyle='--', alpha=0.7, label=f'{label2} ({y1_col})')
+        # Plot DF1 (Sólido default)
+        ax1.plot(data_1['x'], data_1['y1'], color=color_y1, linestyle=s1.get('linestyle', '-'), label=f'{label1} ({lbl_y1})')
+        # Plot DF2 (Punteado default)
+        ax1.plot(data_2['x'], data_2['y1'], color=color_y1, linestyle=s2.get('linestyle', '--'), alpha=s2.get('alpha', 0.7), label=f'{label2} ({lbl_y1})')
 
         ax1.grid(True, linestyle="--", alpha=0.5)
+        
+        if invert_y1:
+            ax1.invert_yaxis()
+        if invert_x:
+            ax1.invert_xaxis()
 
-        # --- Eje Y2 (Derecho): Temperatura ---
+        # --- Eje Y2 (Derecho) ---
         ax2 = ax1.twinx()
-        color_temp = 'tab:red'
-        ax2.set_ylabel(f'{y2_col.replace("_", " ").title()} (°C)', fontsize=12, color=color_temp)
-        ax2.tick_params(axis='y', labelcolor=color_temp)
+        ax2.set_ylabel(lbl_y2, fontsize=12, color=color_y2)
+        ax2.tick_params(axis='y', labelcolor=color_y2)
         
         # Plot DF1 (Sólido)
-        ax2.plot(data_1['x'], data_1['y2'], color=color_temp, linestyle='-', label=f'{label1} ({y2_col})')
+        ax2.plot(data_1['x'], data_1['y2'], color=color_y2, linestyle=s1.get('linestyle', '-'), label=f'{label1} ({lbl_y2})')
         # Plot DF2 (Punteado)
-        ax2.plot(data_2['x'], data_2['y2'], color=color_temp, linestyle='--', alpha=0.7, label=f'{label2} ({y2_col})')
+        ax2.plot(data_2['x'], data_2['y2'], color=color_y2, linestyle=s2.get('linestyle', '--'), alpha=s2.get('alpha', 0.7), label=f'{label2} ({lbl_y2})')
+        
+        if invert_y2:
+            ax2.invert_yaxis()
         
         plt.title(title, fontsize=14, pad=20)
         
@@ -402,7 +434,9 @@ class DataVisualizer:
         xlabel: str = "Velocidad de Viento (m/s)",
         ylabel: str = "Altitud (m)",
         save_path: Optional[str] = None,
-        BarbInterval: int = 30 # Plot barb every N meters roughly
+        BarbInterval: int = 30, # Plot barb every N meters roughly
+        line_color: str = "tab:blue",
+        barb_color: str = "black"
     ):
         """
         Genera un perfil vertical de viento con barbas.
@@ -423,7 +457,7 @@ class DataVisualizer:
         binned = sub.groupby('bin', observed=True).mean().dropna()
         
         # 3. Main Line (Speed) - USING BINNED DATA
-        ax.plot(binned[speed_col], binned[alt_col], label="Velocidad (Promedio)", color="tab:blue", alpha=0.8, marker='o', markersize=4)
+        ax.plot(binned[speed_col], binned[alt_col], label="Velocidad (Promedio)", color=line_color, alpha=0.8, marker='o', markersize=4)
         
         # 4. Calculate U/V (Meteorological Convention: Direction FROM)
         rads = np.deg2rad(binned[dir_col].values)
@@ -440,7 +474,7 @@ class DataVisualizer:
         x_locs = np.ones_like(y_locs) * (x_max * 1.1 if x_max > 0 else 1) 
         
         # Plot Barbs
-        ax.barbs(x_locs, y_locs, u, v, length=6, pivot='middle', color='black')
+        ax.barbs(x_locs, y_locs, u, v, length=6, pivot='middle', color=barb_color)
         
         ax.set_title(title, fontsize=14)
         ax.set_xlabel(xlabel)
