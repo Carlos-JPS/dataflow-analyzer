@@ -34,3 +34,6 @@ test = [
 
 [tool.setuptools.packages.find]
 where = ["."]
+
+[tool.setuptools.package-data]
+"dataflow_analyzer.sample_data" = ["*.csv", "*.xml"]
