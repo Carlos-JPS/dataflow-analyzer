@@ -159,10 +159,16 @@ class XMLSource(DataSource):
         if engine == "pandas":
             df = pd.DataFrame(data)
             
-            # Auto-detectar columnas numéricas (optimizado)
+            # Auto-detectar columnas numéricas, siguiendo las mejores prácticas
             for col in df.columns:
-                # Intentar convertir a numero, ignorando errores para columnas de texto
-                df[col] = pd.to_numeric(df[col], errors='ignore')
+                try:
+                    # Intenta la conversión. Si falla, es porque la columna no es puramente numérica.
+                    df[col] = pd.to_numeric(df[col])
+                except (ValueError, TypeError):
+                    # Si la conversión falla, la dejamos como está (texto u object).
+                    # Esto es intencional y sigue la recomendación de pandas.
+                    logger.debug(f"Columna '{col}' no se convirtió a numérico, se mantiene como tipo 'object'.")
+                    pass
             
             # Procesar Tiempo
             if time_col in df.columns:
