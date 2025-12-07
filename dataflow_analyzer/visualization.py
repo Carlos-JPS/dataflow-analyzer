@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import numpy as np
 from typing import Optional, List, Dict, Any
 from .processing import DataProcessor
 import logging
@@ -238,6 +239,153 @@ class DataVisualizer:
         lines_2, labels_2 = ax2.get_legend_handles_labels()
         ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='best')
 
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            logger.info(f"Gráfico guardado en: {save_path}")
+            
+        return fig
+    def compare_profiles(
+        self,
+        df1: pd.DataFrame,
+        label1: str,
+        df2: pd.DataFrame,
+        label2: str,
+        x_col: str,
+        y1_col: str,
+        y2_col: str,
+        title: str = "Comparación de Perfiles",
+        save_path: Optional[str] = None,
+        bin_size: Optional[float] = None,
+        smooth: bool = False
+    ):
+        """
+        Compara dos perfiles (ej: Dron vs Sonda) en el mismo gráfico.
+        df1 se grafica con línea sólida.
+        df2 se grafica con línea punteada.
+        """
+        fig, ax1 = plt.subplots(figsize=self.figsize)
+        
+        # Procesar ambos DataFrames
+        data_1 = self._process_data(df1, x_col, y1_col, y2_col, bin_size, smooth)
+        data_2 = self._process_data(df2, x_col, y1_col, y2_col, bin_size, smooth)
+        
+        # --- Eje Y1 (Izquierdo): Altitud ---
+        color_alt = 'tab:blue'
+        ax1.set_xlabel(f'{x_col.replace("_", " ").title()} (hPa)', fontsize=12)
+        ax1.set_ylabel(f'{y1_col.replace("_", " ").title()} (m)', fontsize=12, color=color_alt)
+        ax1.tick_params(axis='y', labelcolor=color_alt)
+        
+        # Plot DF1 (Sólido)
+        ax1.plot(data_1['x'], data_1['y1'], color=color_alt, linestyle='-', label=f'{label1} ({y1_col})')
+        # Plot DF2 (Punteado)
+        ax1.plot(data_2['x'], data_2['y1'], color=color_alt, linestyle='--', alpha=0.7, label=f'{label2} ({y1_col})')
+
+        ax1.grid(True, linestyle="--", alpha=0.5)
+
+        # --- Eje Y2 (Derecho): Temperatura ---
+        ax2 = ax1.twinx()
+        color_temp = 'tab:red'
+        ax2.set_ylabel(f'{y2_col.replace("_", " ").title()} (°C)', fontsize=12, color=color_temp)
+        ax2.tick_params(axis='y', labelcolor=color_temp)
+        
+        # Plot DF1 (Sólido)
+        ax2.plot(data_1['x'], data_1['y2'], color=color_temp, linestyle='-', label=f'{label1} ({y2_col})')
+        # Plot DF2 (Punteado)
+        ax2.plot(data_2['x'], data_2['y2'], color=color_temp, linestyle='--', alpha=0.7, label=f'{label2} ({y2_col})')
+        
+        plt.title(title, fontsize=14, pad=20)
+        
+        # Leyenda Unificada
+        lines_1, labels_1 = ax1.get_legend_handles_labels()
+        lines_2, labels_2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='best')
+        
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            logger.info(f"Gráfico guardado en: {save_path}")
+            
+        return fig
+
+    def _process_data(self, df, x_col, y1_col, y2_col, bin_size, smooth):
+        """Helper para limpiar, binning y smoothing."""
+        sub = df[[x_col, y1_col, y2_col]].dropna().copy()
+        
+        if bin_size and bin_size > 0:
+            sub = DataProcessor.bin_data(sub, x_col, [y1_col, y2_col], bin_size)
+            
+        sub.sort_values(by=x_col, inplace=True)
+        
+        x_vals = sub[x_col].values
+        y1_vals = sub[y1_col].values
+        y2_vals = sub[y2_col].values
+        
+        if smooth and len(sub) > 3:
+            x_plot, y1_plot = DataProcessor.smooth_curve(x_vals, y1_vals)
+            _, y2_plot = DataProcessor.smooth_curve(x_vals, y2_vals)
+            return {'x': x_plot, 'y1': y1_plot, 'y2': y2_plot}
+        
+        return {'x': x_vals, 'y1': y1_vals, 'y2': y2_vals}
+
+    def plot_time_series(
+        self,
+        df: pd.DataFrame,
+        y_col: str,
+        x_col: Optional[str] = None,
+        title: str = "Serie de Tiempo",
+        xlabel: str = "Tiempo",
+        ylabel: str = "Valor",
+        label: str = "Datos",
+        color: str = "tab:blue",
+        kind: str = "line", # 'line' or 'scatter'
+        smooth: bool = False,
+        save_path: Optional[str] = None
+    ):
+        """
+        Genera un gráfico simple de serie de tiempo (o X vs Y).
+        """
+        fig, ax = plt.subplots(figsize=self.figsize)
+        
+        # Preparar X e Y
+        if x_col:
+            x_vals = df[x_col].values
+        else:
+            x_vals = df.index.values
+            
+        y_vals = df[y_col].values
+        
+        # Manejo de suavizado
+        is_datetime = pd.api.types.is_datetime64_any_dtype(x_vals) or (len(x_vals)>0 and isinstance(x_vals[0], pd.Timestamp))
+        
+        if smooth and len(x_vals) > 3:
+            # Convertir datetime a float para cálculo
+            if is_datetime:
+                # Convertir a timestamps (floats)
+                x_float = np.array([t.timestamp() for t in pd.to_datetime(x_vals)])
+                # Spline
+                x_plot_f, y_plot = DataProcessor.smooth_curve(x_float, y_vals)
+                # Reconversión a datetime para plot
+                x_plot = pd.to_datetime(x_plot_f, unit='s')
+            else:
+                x_plot, y_plot = DataProcessor.smooth_curve(x_vals, y_vals)
+        else:
+            x_plot, y_plot = x_vals, y_vals
+
+        # Plot
+        if kind == "scatter":
+            ax.scatter(x_plot, y_plot, color=color, alpha=0.6, label=label, s=5)
+        else:
+            ax.plot(x_plot, y_plot, color=color, alpha=0.8, label=label, linewidth=2)
+            
+        ax.set_title(title, fontsize=14, pad=15)
+        ax.set_xlabel(xlabel, fontsize=12)
+        ax.set_ylabel(ylabel, fontsize=12)
+        ax.grid(True, linestyle="--", alpha=0.5)
+        ax.legend(loc="best")
+        
+        # Formato de fecha rotado si es serie de tiempo
+        if is_datetime:
+            fig.autofmt_xdate()
+            
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             logger.info(f"Gráfico guardado en: {save_path}")

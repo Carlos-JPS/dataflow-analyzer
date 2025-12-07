@@ -60,19 +60,37 @@ class DataProcessor:
             logger.warning("Scipy no está instalado. No se puede suavizar (Spline).")
             return x, y
             
-        if len(x) <= k:
-            logger.warning(f"Pocos puntos ({len(x)}) para Spline k={k}. Retornando original.")
-            return x, y
+        # Limpieza previa de NaNs/Infs
+        mask = np.isfinite(x) & np.isfinite(y)
+        x_clean = x[mask]
+        y_clean = y[mask]
+        
+        if len(x_clean) <= k:
+            logger.warning(f"Pocos puntos válidos ({len(x_clean)}) para Spline k={k}. Retornando datos limpios.")
+            return x_clean, y_clean
 
         try:
             # Generar nuevo eje denso
-            x_smooth = np.linspace(x.min(), x.max(), points)
+            x_smooth = np.linspace(x_clean.min(), x_clean.max(), points)
             
-            # Crear Spline
-            spl = make_interp_spline(x, y, k=k)
+            # Crear Spline (requiere datos ordenados en X, pero make_interp_spline maneja X no ordenado si check_finite=True?)
+            # Scipy requiere X estrictamente creciente para BSpline, pero make_interp_spline permite repetidos si k es bajo?
+            # Mejor ordenar para asegurar consistencia
+            idx_sorted = np.argsort(x_clean)
+            x_sorted = x_clean[idx_sorted]
+            y_sorted = y_clean[idx_sorted]
+            
+            # Eliminar duplicados en X (spline requiere X únicos o manejo especial)
+            x_unique, idx_unique = np.unique(x_sorted, return_index=True)
+            y_unique = y_sorted[idx_unique]
+            
+            if len(x_unique) <= k:
+                 return x_clean, y_clean
+
+            spl = make_interp_spline(x_unique, y_unique, k=k)
             y_smooth = spl(x_smooth)
             
             return x_smooth, y_smooth
         except Exception as e:
             logger.error(f"Error en cálculo Spline: {e}")
-            return x, y
+            return x_clean, y_clean
