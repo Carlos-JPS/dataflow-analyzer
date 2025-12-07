@@ -33,6 +33,62 @@ source .venv/bin/activate  # Linux/Mac
 pip install -e .[test]
 ```
 
+## 📓 Uso en Google Colab / DataSpell
+
+Para usar la librería en notebooks sin necesidad de subir archivos manualmente, puedes instalarla directamente desde el repositorio:
+
+### Google Colab
+
+En una celda de código, ejecuta:
+
+```python
+# Opción A: Si el repositorio es PÚBLICO
+!pip install git+https://gitlab.com/cemcc/abl-drone-aas-sw/data-analysis.git@main
+
+# Opción B: Si es PRIVADO (necesitas un Token de Acceso Personal)
+# Reemplaza <TOKEN> por tu token de GitLab
+!pip install git+https://oauth2:<TOKEN>@gitlab.com/cemcc/abl-drone-aas-sw/data-analysis.git@main
+```
+
+### DataSpell / Jupyter Lab Local
+
+Simplemente instala la librería en tu entorno activo (terminal):
+
+```bash
+pip install git+https://gitlab.com/cemcc/abl-drone-aas-sw/data-analysis.git@main
+```
+
+Una vez instalada, puedes importar los módulos y usar los datos de muestra incluidos:
+
+```python
+from dataflow_analyzer.data_source import CSVSource
+import importlib.resources
+
+# Usar datos de ejemplo
+with importlib.resources.path("dataflow_analyzer.sample_data", "dron_sample.csv") as p:
+    dron = CSVSource(str(p)).load(pivot=True)
+    dron.df.head()
+```
+
+### Opción C: Instalación Offline (Wheel)
+
+Si prefieres compartir el archivo `.whl` directamente:
+
+1.  Generar el instalador `.whl`:
+
+    ```bash
+    pip install build
+    python -m build
+    ```
+
+    Esto creará una carpeta `dist/` con el archivo `dataflow_analyzer-0.1.0-py3-none-any.whl`.
+
+2.  Instalar en Colab/DataSpell:
+    (Sube el archivo `.whl` a tus archivos del notebook y ejecuta):
+    ```bash
+    pip install dataflow_analyzer-0.1.0-py3-none-any.whl
+    ```
+
 ## 🛠️ Uso Básico
 
 ### 1. Cargar Datos
@@ -93,11 +149,7 @@ pytest
 
 ## 📂 Demos
 
-Puedes ver ejemplos funcionales en la carpeta `dataflow_analyzer/demos/`:
+Puedes ver ejemplos funcionales en la carpeta `demos/`:
 
-- `demo_load.py`: Carga básica de datos CSV y visualización de estructura.
-- `demo_plot.py`: Gráfico básico de perfil vertical (Temperatura/Humedad).
-- `demo_xml_plot.py`: Carga y graficado de datos de radiosonda desde XML.
-- `demo_altitude.py`: Filtrado avanzado por rango de tiempo y altitud, con cálculo de media móvil.
 - `demo_comparison.py`: Comparativa completa y ajustada entre datos de Dron y Sonda.
 - `demo_wind.py`: Generación del perfil de viento con barbas meteorológicas.
