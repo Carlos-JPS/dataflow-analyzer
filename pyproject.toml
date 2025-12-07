@@ -25,6 +25,9 @@ influx = [
     "influxdb-client",
     "influxdb"
 ]
+test = [
+    "pytest"
+]
 
 [project.scripts]
 # cli-name = "dataflow_analyzer.module:function"
