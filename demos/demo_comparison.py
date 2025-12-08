@@ -16,9 +16,9 @@ def main():
     print("--- Demo Comparacion: Dron vs Sonda ---")
 
     # --- 2. Encontrar la ruta a los datos de forma robusta ---
-    with importlib.resources.path("dataflow_analyzer.sample_data", "dron_sample.csv") as p:
+    with importlib.resources.as_file(importlib.resources.files("dataflow_analyzer.sample_data").joinpath("dron_sample.csv")) as p:
         csv_path = str(p)
-    with importlib.resources.path("dataflow_analyzer.sample_data", "sonda_sample.xml") as p:
+    with importlib.resources.as_file(importlib.resources.files("dataflow_analyzer.sample_data").joinpath("sonda_sample.xml")) as p:
         xml_path = str(p)
     
     # 1. Cargar Dron

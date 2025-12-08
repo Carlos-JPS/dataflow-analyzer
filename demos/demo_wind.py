@@ -15,7 +15,7 @@ def main():
     print("--- Demo: Perfil de Viento ---")
     
     # --- 2. Encontrar la ruta a los datos de forma robusta ---
-    with importlib.resources.path("dataflow_analyzer.sample_data", "dron_sample.csv") as p:
+    with importlib.resources.as_file(importlib.resources.files("dataflow_analyzer.sample_data").joinpath("dron_sample.csv")) as p:
         csv_path = str(p)
 
     # 1. Cargar Dron
