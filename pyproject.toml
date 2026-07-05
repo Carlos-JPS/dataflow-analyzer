@@ -20,6 +20,10 @@ dependencies = [
     "scipy",
 ]
 
+[project.urls]
+Repository = "https://github.com/Carlos-JPS/dataflow-analyzer"
+Issues = "https://github.com/Carlos-JPS/dataflow-analyzer/issues"
+
 [project.optional-dependencies]
 influx = [
     "influxdb-client",

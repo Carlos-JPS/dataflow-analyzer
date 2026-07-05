@@ -42,12 +42,7 @@ Para usar la librería en notebooks sin necesidad de subir archivos manualmente,
 En una celda de código, ejecuta:
 
 ```python
-# Opción A: Si el repositorio es PÚBLICO
-!pip install git+https://gitlab.com/cemcc/abl-drone-aas-sw/data-analysis.git@main
-
-# Opción B: Si es PRIVADO (necesitas un Token de Acceso Personal)
-# Reemplaza <TOKEN> por tu token de GitLab
-!pip install git+https://oauth2:<TOKEN>@gitlab.com/cemcc/abl-drone-aas-sw/data-analysis.git@main
+!pip install git+https://github.com/Carlos-JPS/dataflow-analyzer.git@main
 ```
 
 ### DataSpell / Jupyter Lab Local
@@ -55,7 +50,7 @@ En una celda de código, ejecuta:
 Simplemente instala la librería en tu entorno activo (terminal):
 
 ```bash
-pip install git+https://gitlab.com/cemcc/abl-drone-aas-sw/data-analysis.git@main
+pip install git+https://github.com/Carlos-JPS/dataflow-analyzer.git@main
 ```
 
 Una vez instalada, puedes importar los módulos y usar los datos de muestra incluidos:
