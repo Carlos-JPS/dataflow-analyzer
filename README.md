@@ -1,150 +1,158 @@
-# DataFlow Analyzer 🌦️🛸
+# DataFlow Analyzer
 
-**DataFlow Analyzer** es una librería en Python diseñada para el procesamiento, análisis y visualización de perfiles atmosféricos. Su objetivo principal es facilitar la comparación de datos obtenidos por **Drones (UAVs)** frente a **Radiosondas** meteorológicas.
+DataFlow Analyzer es una librería de Python para procesar y visualizar perfiles
+atmosféricos obtenidos mediante drones y radiosondas.
 
-## 🚀 Características Principales
+El proyecto permite leer mediciones desde archivos CSV y XML, aplicar
+transformaciones comunes sobre series meteorológicas y comparar perfiles de
+altitud, presión, temperatura y viento.
 
-- **Ingesta de Datos Robusta**:
-  - Soporte para CSVs de Drones (con limpieza automática de duplicados y metadatos).
-  - Soporte para XMLs de Radiosondas (con aplanado automático de estructuras anidadas).
-  - Manejo inteligente de zonas horarias y formatos de fecha.
-- **Procesamiento Científico (`DataProcessor`)**:
-  - **Filtrado de Tiempo**: Selección precisa de rangos con soporte timezone-aware.
-  - **Binning Vertical**: Agrupación de datos por intervalos de altitud o presión.
-  - **Suavizado (Splines)**: Interpolación suave para eliminar el ruido de alta frecuencia del dron.
-- **Visualización Profesional (`DataVisualizer`)**:
-  - **Perfiles Verticales**: Gráficos de Temperatura/Humedad vs Altitud.
-  - **Comparativas**: Estilos visuales distintos para superponer Dron vs Sonda.
-  - **Análisis de Viento**: Perfil vertical con barbas meteorológicas (Wind Barbs) indicando velocidad y dirección.
-  - **Series de Tiempo**: Análisis de variables a lo largo de la misión.
-- **Testeo Riguroso**: Batería completa de tests unitarios con `pytest`.
+## Funcionalidades
 
-## 📦 Instalación
+- Lectura de archivos CSV estándar y exportaciones CSV de InfluxDB.
+- Conversión de datos desde formato largo a formato ancho.
+- Agregación de registros con marcas de tiempo duplicadas.
+- Lectura de radiosondas desde XML con datos en atributos o elementos hijos.
+- Filtrado por intervalos de tiempo, incluyendo datos con zona horaria.
+- Agrupación por intervalos de altitud, presión u otra variable continua.
+- Interpolación mediante splines para suavizar perfiles.
+- Combinación exacta o aproximada de fuentes mediante `merge` y `merge_asof`.
+- Gráficos de perfiles verticales, series de tiempo y perfiles de viento.
 
-El proyecto utiliza `uv` o `pip` estándar. Se recomienda instalar en modo editable:
+## Componentes
+
+| Módulo | Responsabilidad |
+| --- | --- |
+| `data_source.py` | Carga de fuentes CSV y XML. |
+| `processing.py` | Filtrado, agrupación e interpolación de datos. |
+| `strategies.py` | Alineación exacta o aproximada entre fuentes. |
+| `visualization.py` | Creación de perfiles, comparaciones y series de tiempo. |
+
+## Requisitos
+
+- Python 3.9 o superior.
+- pandas, Polars, lxml, SciPy, Matplotlib y Seaborn.
+
+## Instalación
+
+Para trabajar con una copia local del proyecto:
 
 ```bash
-# Crear entorno virtual (opcional pero recomendado)
+git clone https://github.com/Carlos-JPS/dataflow-analyzer.git
+cd dataflow-analyzer
 python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate   # Windows
-
-# Instalar dependencias y la librería
-pip install -e .[test]
+source .venv/bin/activate
+pip install -e ".[test]"
 ```
 
-## 📓 Uso en Google Colab / DataSpell
+En Windows, la activación del entorno virtual se realiza con:
 
-Para usar la librería en notebooks sin necesidad de subir archivos manualmente, puedes instalarla directamente desde el repositorio:
+```powershell
+.venv\Scripts\activate
+```
 
-### Google Colab
+La librería también se puede instalar directamente desde GitHub:
 
-En una celda de código, ejecuta:
+```bash
+pip install "git+https://github.com/Carlos-JPS/dataflow-analyzer.git@main"
+```
+
+En Google Colab, anteponer `!` al mismo comando:
 
 ```python
 !pip install git+https://github.com/Carlos-JPS/dataflow-analyzer.git@main
 ```
 
-### DataSpell / Jupyter Lab Local
+## Uso básico
 
-Simplemente instala la librería en tu entorno activo (terminal):
-
-```bash
-pip install git+https://github.com/Carlos-JPS/dataflow-analyzer.git@main
-```
-
-Una vez instalada, puedes importar los módulos y usar los datos de muestra incluidos:
-
-```python
-from dataflow_analyzer.data_source import CSVSource
-import importlib.resources
-
-# Usar datos de ejemplo
-with importlib.resources.path("dataflow_analyzer.sample_data", "dron_sample.csv") as p:
-    dron = CSVSource(str(p)).load(pivot=True)
-    dron.df.head()
-```
-
-### Opción C: Instalación Offline (Wheel)
-
-Si prefieres compartir el archivo `.whl` directamente:
-
-1.  Generar el instalador `.whl`:
-
-    ```bash
-    pip install build
-    python -m build
-    ```
-
-    Esto creará una carpeta `dist/` con el archivo `dataflow_analyzer-0.1.0-py3-none-any.whl`.
-
-2.  Instalar en Colab/DataSpell:
-    (Sube el archivo `.whl` a tus archivos del notebook y ejecuta):
-    ```bash
-    pip install dataflow_analyzer-0.1.0-py3-none-any.whl
-    ```
-
-## 🛠️ Uso Básico
-
-### 1. Cargar Datos
+### Cargar datos
 
 ```python
 from dataflow_analyzer.data_source import CSVSource, XMLSource
 
-# Cargar datos de Dron (CSV)
-# pivot=True si los datos vienen en formato 'long' (ej. exportación de InfluxDB)
-dron_loader = CSVSource("ruta/al/dron.csv")
-dron_loader.load(pivot=True)
-df_dron = dron_loader.df
+# CSV de un dron. pivot=True convierte una exportación de InfluxDB
+# desde formato largo a formato ancho.
+dron = CSVSource("datos/dron.csv").load(pivot=True)
+df_dron = dron.df
 
-# Cargar datos de Sonda (XML)
-sonda_loader = XMLSource("ruta/a/sonda.xml")
-sonda_loader.load() # Infiere raíz automáticamente
-df_sonda = sonda_loader.df
+# XML de una radiosonda.
+sonda = XMLSource("datos/sonda.xml").load()
+df_sonda = sonda.df
 ```
 
-### 2. Generar Gráficos
+Los nombres predeterminados para un CSV en formato largo son `_time`, `_field`
+y `_value`. Se pueden cambiar mediante los argumentos de `CSVSource.load()`.
+Para XML, los valores predeterminados son `Row` como elemento de cada registro y
+`DataSrvTime` como campo temporal.
 
-#### Comparación de Perfiles
+### Procesar datos
+
+```python
+from dataflow_analyzer.processing import DataProcessor
+
+df_filtrado = DataProcessor.filter_by_time(
+    df_dron,
+    start="2025-01-01 10:00:00",
+    end="2025-01-01 11:00:00",
+)
+
+df_agrupado = DataProcessor.bin_data(
+    df_filtrado,
+    bin_col="altitude",
+    value_cols=["presion", "temperatura"],
+    bin_size=10,
+)
+```
+
+### Generar un perfil de viento
 
 ```python
 from dataflow_analyzer.visualization import DataVisualizer
 
-viz = DataVisualizer()
-viz.compare_profiles(
-    df1=df_dron, label1="Dron",
-    df2=df_sonda, label2="Sonda",
-    x_col='presion',       # Eje Común (Vertical en Meteorología)
-    y1_col='altitude',     # Eje Izquierdo
-    y2_col='temperatura',  # Eje Derecho
-    title="Comparativa Dron vs Sonda",
-    smooth=True            # Activar suavizado Spline
-)
-```
-
-#### Perfil de Viento
-
-```python
-viz.plot_wind_profile(
+visualizer = DataVisualizer()
+visualizer.plot_wind_profile(
     df=df_dron,
-    alt_col='altitude',
-    speed_col='velocidadViento',
-    dir_col='direccionViento',
-    BarbInterval=50 # Una barba cada 50m
+    alt_col="altitude",
+    speed_col="velocidadViento",
+    dir_col="direccionViento",
+    BarbInterval=50,
+    save_path="perfil_viento.png",
 )
 ```
 
-## 🧪 Ejecutar Tests
+Los gráficos pueden guardarse en los formatos admitidos por Matplotlib, como
+PNG, PDF o SVG, utilizando el argumento `save_path`.
 
-El proyecto cuenta con una suite de tests robusta. Para ejecutarla:
+## Ejemplos
+
+El repositorio incluye datos de muestra y dos programas ejecutables:
+
+```bash
+python demos/demo_comparison.py
+python demos/demo_wind.py
+```
+
+- `demo_comparison.py` compara perfiles de presión, altitud y temperatura de
+  un dron y una radiosonda.
+- `demo_wind.py` genera un perfil vertical de velocidad y dirección del viento.
+
+## Pruebas
+
+Las pruebas unitarias cubren la carga de fuentes, las transformaciones y la
+creación de visualizaciones.
 
 ```bash
 pytest
 ```
 
-## 📂 Demos
+## Alcance actual
 
-Puedes ver ejemplos funcionales en la carpeta `demos/`:
+La librería carga archivos locales, pero no consulta directamente una instancia
+de InfluxDB. Tampoco incluye una capa propia para exportar datos tabulares. Los
+resultados son objetos `DataFrame`, por lo que pueden exportarse mediante los
+métodos de pandas, por ejemplo `to_csv()` o `to_json()`. La exportación a Excel
+con `to_excel()` requiere instalar un motor compatible, como `openpyxl`.
 
-- `demo_comparison.py`: Comparativa completa y ajustada entre datos de Dron y Sonda.
-- `demo_wind.py`: Generación del perfil de viento con barbas meteorológicas.
+## Autor
+
+[Carlos Pradenas Sepúlveda](https://github.com/Carlos-JPS)
